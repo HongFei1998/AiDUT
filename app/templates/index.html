@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI手机助手 - 自然语言控制</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航栏 -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">📱</span>
+                <span class="logo-text">AI 手机助手</span>
+            </div>
+            <div class="device-status" id="deviceStatus">
+                <span class="status-dot disconnected"></span>
+                <span class="status-text">未连接</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-connect" id="btnConnect">连接设备</button>
+                <button class="btn btn-refresh" id="btnRefresh" title="刷新截图">🔄</button>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 左侧：设备屏幕 -->
+            <section class="device-panel">
+                <div class="panel-header">
+                    <h2>设备屏幕</h2>
+                    <div class="device-info" id="deviceInfo"></div>
+                </div>
+                <div class="screen-container">
+                    <div class="phone-frame">
+                        <div class="phone-notch"></div>
+                        <div class="screen-wrapper" id="screenWrapper">
+                            <div class="placeholder" id="screenPlaceholder">
+                                <div class="placeholder-icon">📲</div>
+                                <p>请先连接设备</p>
+                                <p class="placeholder-hint">点击右上角"连接设备"按钮</p>
+                            </div>
+                            <img id="deviceScreen" class="device-screen hidden" alt="设备屏幕">
+                            <canvas id="touchCanvas" class="touch-canvas hidden"></canvas>
+                        </div>
+                        <div class="phone-nav">
+                            <button class="nav-btn" data-key="back" title="返回">◀</button>
+                            <button class="nav-btn" data-key="home" title="主页">●</button>
+                            <button class="nav-btn" data-key="recent" title="最近">▣</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧：对话框 -->
+            <section class="chat-panel">
+                <div class="panel-header">
+                    <h2>任务对话</h2>
+                    <button class="btn btn-clear" id="btnClear" title="清空对话">🗑️ 清空</button>
+                </div>
+                
+                <div class="chat-container" id="chatContainer">
+                    <div class="welcome-message">
+                        <div class="welcome-icon">🤖</div>
+                        <h3>你好！我是你的AI手机助手</h3>
+                        <p>告诉我你想在手机上做什么，我来帮你完成。</p>
+                        <div class="quick-actions">
+                            <button class="quick-btn" data-msg="打开微信">打开微信</button>
+                            <button class="quick-btn" data-msg="截图并保存">截图保存</button>
+                            <button class="quick-btn" data-msg="返回桌面">返回桌面</button>
+                            <button class="quick-btn" data-msg="向下滑动">向下滑动</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 输入区域 -->
+                <div class="input-container">
+                    <div class="input-wrapper">
+                        <textarea 
+                            id="messageInput" 
+                            placeholder="描述你想执行的任务，例如：打开设置，调整屏幕亮度..."
+                            rows="1"
+                        ></textarea>
+                        <button class="btn btn-send" id="btnSend">
+                            <span class="send-icon">➤</span>
+                        </button>
+                        <button class="btn btn-stop hidden" id="btnStop">
+                            <span class="stop-icon">⏹</span>
+                        </button>
+                    </div>
+                    <div class="input-hint">
+                        <span>按 Enter 发送，Shift+Enter 换行</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 连接设备弹窗 -->
+    <div class="modal hidden" id="connectModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content connect-modal-content">
+            <div class="modal-header">
+                <h3>连接设备</h3>
+                <button class="modal-close" id="modalClose">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- 连接方式切换 -->
+                <div class="connect-tabs">
+                    <button class="tab-btn active" data-tab="usb">
+                        <span class="tab-icon">🔌</span>
+                        <span>USB 连接</span>
+                    </button>
+                    <button class="tab-btn" data-tab="wireless">
+                        <span class="tab-icon">📶</span>
+                        <span>无线调试</span>
+                    </button>
+                </div>
+
+                <!-- USB 连接面板 -->
+                <div class="tab-panel active" id="usbPanel">
+                    <div class="form-group">
+                        <label>选择设备</label>
+                        <div class="device-select-wrapper">
+                            <select id="deviceSerial" class="device-select">
+                                <option value="">正在获取设备列表...</option>
+                            </select>
+                            <button class="btn btn-icon" id="btnRefreshDevices" title="刷新设备列表">🔄</button>
+                        </div>
+                        <p class="form-hint" id="deviceListHint">请确保设备已通过 USB 连接并开启 USB 调试</p>
+                    </div>
+                </div>
+
+                <!-- 无线调试面板 -->
+                <div class="tab-panel" id="wirelessPanel">
+                    <div class="wireless-content">
+                        <div class="wireless-idle" id="wirelessIdle">
+                            <div class="wireless-info">
+                                <p class="wireless-title">📱 Android 11+ 无线调试</p>
+                                <p class="wireless-desc">点击下方按钮生成配对二维码，然后在手机上扫描</p>
+                                <ol class="wireless-steps">
+                                    <li>打开手机 <b>设置</b> → <b>开发者选项</b></li>
+                                    <li>启用 <b>无线调试</b></li>
+                                    <li>点击 <b>使用二维码配对设备</b></li>
+                                    <li>扫描下方生成的二维码</li>
+                                </ol>
+                            </div>
+                            <button class="btn btn-primary btn-start-pair" id="btnStartPair">
+                                <span>📷 生成配对二维码</span>
+                            </button>
+                        </div>
+                        
+                        <div class="wireless-pairing hidden" id="wirelessPairing">
+                            <div class="qr-container">
+                                <img id="wirelessQRCode" class="wireless-qr" alt="配对二维码">
+                            </div>
+                            <div class="wireless-status" id="wirelessStatus">
+                                <span class="status-icon">⏳</span>
+                                <span class="status-message">等待扫描二维码...</span>
+                            </div>
+                            <button class="btn btn-secondary btn-stop-pair" id="btnStopPair">取消配对</button>
+                        </div>
+                        
+                        <div class="wireless-success hidden" id="wirelessSuccess">
+                            <div class="success-icon">🎉</div>
+                            <p class="success-message">无线连接成功！</p>
+                            <p class="success-device" id="wirelessDevice"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="usbFooter">
+                <button class="btn btn-secondary" id="btnCancel">取消</button>
+                <button class="btn btn-primary" id="btnConfirmConnect">连接</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载遮罩 -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">正在处理...</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
+

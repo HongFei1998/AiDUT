@@ -1,0 +1,25 @@
+# Flask Web框架
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# uiautomator2 - Android设备控制
+uiautomator2>=3.5.0
+
+# OpenAI API客户端
+openai>=1.0.0
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# 图像处理
+Pillow>=10.0.0
+
+# HTTP请求
+requests>=2.31.0
+
+# 无线调试 - mDNS 服务发现
+zeroconf>=0.131.0
+
+# 二维码生成
+qrcode[pil]>=7.4.0
+
