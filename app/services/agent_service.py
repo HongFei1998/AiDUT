@@ -1,4 +1,5 @@
 import time
+import concurrent.futures
 from typing import Dict, Any, Generator, List, Optional
 from app.services.device_service import DeviceService
 from app.services.llm_service import LLMService
@@ -22,9 +23,14 @@ class AgentService:
     def __init__(self):
         self.device_service = DeviceService()
         self.llm_service = LLMService()
-        self.max_steps = 20
-        self.action_delay = 1.0
+        self.max_steps = 50
+        self.action_delay = 0.8  # 减少等待时间（原来是1.0）
         self._stop_flag = getattr(self, '_stop_flag', False)
+        
+        # 性能优化选项
+        self.skip_ui_hierarchy = False  # 是否跳过 UI 层级（可大幅加速，但可能影响准确性）
+        self.parallel_enabled = True    # 是否启用并行获取
+        
         # 延迟初始化 OCR 服务（首次使用时初始化，避免启动时加载模型）
         if not hasattr(self, '_ocr_service') or self._ocr_service is None:
             self._ocr_service = None
@@ -139,24 +145,125 @@ class AgentService:
             self._ocr_service = ocr_service()
         return self._ocr_service
     
-    def _get_screen_state(self) -> tuple:
-        """获取当前屏幕状态，包含 OCR 识别结果"""
-        screenshot = self.device_service.get_screenshot()
-        ui_hierarchy = self.device_service.dump_hierarchy()
-        current_app = self.device_service.get_current_app()
+    def _get_screen_state(self, skip_ui_hierarchy: bool = False) -> tuple:
+        """
+        获取当前屏幕状态，包含 OCR 识别结果和耗时统计
+        使用并行执行优化性能
         
-        # 获取 OCR 识别结果
-        ocr_result = None
-        try:
-            # 保存截图到临时文件用于 OCR
-            screenshot_file = self.device_service.get_screenshot_file()
-            ocr_svc = self._get_ocr_service()
-            ocr_result = ocr_svc.get_all_text_with_positions(screenshot_file)
-        except Exception as e:
-            print(f"OCR识别失败: {e}")
-            ocr_result = {"error": str(e), "elements": []}
+        Args:
+            skip_ui_hierarchy: 是否跳过 UI 层级获取（可加速约 500-1500ms）
         
-        return screenshot, ui_hierarchy, current_app, ocr_result
+        Returns:
+            (screenshot, ui_hierarchy, current_app, ocr_result, timing)
+        """
+        timing = {}
+        total_start = time.time()
+        
+        # 使用线程池并行执行
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            # 提交并行任务
+            # 任务1: 截图 + 保存 + OCR（串行，因为 OCR 依赖截图）
+            def screenshot_and_ocr():
+                result = {'screenshot': None, 'ocr': None, 'timing': {}}
+                
+                # 截图
+                t0 = time.time()
+                result['screenshot'] = self.device_service.get_screenshot()
+                result['timing']['screenshot'] = round((time.time() - t0) * 1000)
+                
+                # 保存截图供 OCR 使用
+                t0 = time.time()
+                screenshot_file = self.device_service.get_screenshot_file()
+                result['timing']['save_screenshot'] = round((time.time() - t0) * 1000)
+                
+                # OCR 识别
+                t0 = time.time()
+                try:
+                    ocr_svc = self._get_ocr_service()
+                    result['ocr'] = ocr_svc.get_all_text_with_positions(screenshot_file)
+                except Exception as e:
+                    print(f"OCR识别失败: {e}")
+                    result['ocr'] = {"error": str(e), "elements": []}
+                result['timing']['ocr'] = round((time.time() - t0) * 1000)
+                
+                return result
+            
+            # 任务2: UI 层级（可选）
+            def get_ui_hierarchy():
+                if skip_ui_hierarchy:
+                    return {'hierarchy': '', 'time': 0}
+                t0 = time.time()
+                hierarchy = self.device_service.dump_hierarchy()
+                return {'hierarchy': hierarchy, 'time': round((time.time() - t0) * 1000)}
+            
+            # 任务3: 当前应用信息
+            def get_current_app():
+                t0 = time.time()
+                app = self.device_service.get_current_app()
+                return {'app': app, 'time': round((time.time() - t0) * 1000)}
+            
+            # 并行提交任务
+            future_screenshot_ocr = executor.submit(screenshot_and_ocr)
+            future_ui = executor.submit(get_ui_hierarchy)
+            future_app = executor.submit(get_current_app)
+            
+            # 等待所有任务完成并收集结果
+            screenshot_ocr_result = future_screenshot_ocr.result()
+            ui_result = future_ui.result()
+            app_result = future_app.result()
+        
+        # 汇总结果
+        screenshot = screenshot_ocr_result['screenshot']
+        ocr_result = screenshot_ocr_result['ocr']
+        ui_hierarchy = ui_result['hierarchy']
+        current_app = app_result['app']
+        
+        # 汇总耗时
+        timing.update(screenshot_ocr_result['timing'])
+        timing['ui_hierarchy'] = ui_result['time']
+        timing['current_app'] = app_result['time']
+        
+        # 计算总耗时（并行执行后的实际耗时）
+        timing['total'] = round((time.time() - total_start) * 1000)
+        
+        # 计算节省的时间（串行耗时 - 并行耗时）
+        serial_time = sum(v for k, v in timing.items() if k != 'total')
+        timing['saved'] = serial_time - timing['total']
+        
+        return screenshot, ui_hierarchy, current_app, ocr_result, timing
+    
+    def _format_timing(self, timing: Dict[str, int], verbose: bool = True) -> str:
+        """格式化耗时统计信息"""
+        parts = []
+        
+        # 显示所有主要耗时项
+        if 'screenshot' in timing:
+            parts.append(f"截图:{timing['screenshot']}ms")
+        if 'save_screenshot' in timing and timing['save_screenshot'] > 0:
+            parts.append(f"保存:{timing['save_screenshot']}ms")
+        if 'ui_hierarchy' in timing and timing['ui_hierarchy'] > 0:
+            parts.append(f"布局:{timing['ui_hierarchy']}ms")
+        if 'ocr' in timing:
+            parts.append(f"OCR:{timing['ocr']}ms")
+        if 'current_app' in timing and timing['current_app'] > 0:
+            parts.append(f"应用:{timing['current_app']}ms")
+        
+        # 串行总耗时（各步骤相加）
+        serial_time = sum(v for k, v in timing.items() if k not in ['total', 'saved'])
+        
+        # 并行实际耗时
+        total = timing.get('total', 0)
+        
+        # 显示对比
+        parts.append(f"串行:{serial_time}ms")
+        parts.append(f"并行:{total}ms")
+        
+        # 显示节省的时间
+        saved = timing.get('saved', 0)
+        if saved > 0:
+            parts.append(f"省:{saved}ms")
+        
+        return " | ".join(parts)
     
     def execute_task(self, task: str) -> Generator[Dict[str, Any], None, None]:
         """执行任务"""
@@ -167,16 +274,21 @@ class AgentService:
             yield {'type': 'error', 'message': '设备未连接，请先连接设备'}
             return
         
+        task_start_time = time.time()  # 任务开始时间
         yield {'type': 'start', 'message': f'🚀 开始执行: {task}'}
         
         # 获取初始屏幕状态
         try:
-            current_screenshot, current_ui_hierarchy, current_app, current_ocr = self._get_screen_state()
+            current_screenshot, current_ui_hierarchy, current_app, current_ocr, init_timing = self._get_screen_state(
+                skip_ui_hierarchy=self.skip_ui_hierarchy
+            )
             ocr_count = len(current_ocr.get('elements', [])) if current_ocr else 0
+            timing_str = self._format_timing(init_timing)
             yield {
                 'type': 'info',
-                'message': f'📱 当前应用: {current_app.get("package", "未知")} | OCR识别: {ocr_count}个文字',
-                'screenshot': current_screenshot
+                'message': f'📱 当前应用: {current_app.get("package", "未知")} | OCR: {ocr_count}个 | ⏱️ {timing_str}',
+                'screenshot': current_screenshot,
+                'timing': init_timing
             }
             # 初始化OCR文字记录
             self._last_ocr_texts = self._extract_ocr_texts(current_ocr)
@@ -188,17 +300,21 @@ class AgentService:
         previous_action_result = None
         last_action = None  # 记录上一次执行的操作
         previous_app_package = None  # 记录上一步的APP包名，用于检测APP切换
+        action_history = []  # 操作历史记录
+        memories = []  # AI 记录的关键信息（如短信内容、查询结果等）
         
         while step < self.max_steps:
             if self.is_stopped():
-                yield {'type': 'stopped', 'message': '⏹️ 任务已停止'}
+                task_duration = round(time.time() - task_start_time, 1)
+                yield {'type': 'stopped', 'message': f'⏹️ 任务已停止 | 总耗时: {task_duration}秒 | 执行了{step}步'}
                 return
             
             step += 1
             
             # AI分析
-            yield {'type': 'thinking', 'message': f'🤔 正在分析...'}
+            yield {'type': 'thinking', 'message': f'🤔 步骤{step} 正在分析...'}
             
+            ai_start = time.time()
             try:
                 result = self.llm_service.analyze_and_act(
                     task=task,
@@ -207,8 +323,12 @@ class AgentService:
                     current_app=current_app,
                     previous_action=previous_action_result,
                     ocr_result=current_ocr,
-                    previous_app_package=previous_app_package  # 传递上一步的APP包名
+                    previous_app_package=previous_app_package,  # 传递上一步的APP包名
+                    step_number=step,
+                    action_history=action_history,  # 传递操作历史
+                    memories=memories  # 传递记忆信息
                 )
+                ai_time = round((time.time() - ai_start) * 1000)  # AI耗时(毫秒)
             except Exception as e:
                 yield {'type': 'error', 'message': f'❌ AI分析失败: {str(e)}'}
                 return
@@ -220,43 +340,69 @@ class AgentService:
             message = result.get('message', '')
             action = result.get('action')
             debug = result.get('debug', {})
+            memory = result.get('memory')  # AI 记录的关键信息
+            
+            # 如果 AI 记录了新的记忆，保存下来
+            if memory:
+                memories.append(memory)
+                yield {'type': 'info', 'message': f'📝 记录: {memory}'}
+            
+            # 添加 AI 耗时到 debug 信息
+            debug['ai_time_ms'] = ai_time
+            debug['memories'] = memories.copy()  # 添加当前记忆到 debug
             
             if status == 'completed':
-                yield {'type': 'completed', 'message': f'✅ {message}', 'debug': debug}
+                task_duration = round(time.time() - task_start_time, 1)
+                # 如果有记忆，在完成消息中包含
+                complete_msg = f'✅ {message}'
+                if memories:
+                    complete_msg += f'\n📋 记录的信息: {"; ".join(memories)}'
+                complete_msg += f'\n⏱️ 总耗时: {task_duration}秒 | 共{step}步 | 本步AI:{ai_time}ms'
+                yield {'type': 'completed', 'message': complete_msg, 'debug': debug}
                 return
             
             elif status == 'failed':
-                yield {'type': 'failed', 'message': f'❌ {message}', 'debug': debug}
+                task_duration = round(time.time() - task_start_time, 1)
+                yield {'type': 'failed', 'message': f'❌ {message}\n⏱️ 总耗时: {task_duration}秒 | 共{step}步', 'debug': debug}
                 return
             
             elif status == 'action' and action:
                 yield {
                     'type': 'action',
-                    'message': f'▶️ 步骤{step}: {message}',
+                    'message': f'▶️ 步骤{step}: {message} (AI:{ai_time}ms)',
                     'action': action,
                     'debug': debug
                 }
                 
                 if self.is_stopped():
-                    yield {'type': 'stopped', 'message': '⏹️ 任务已停止'}
+                    task_duration = round(time.time() - task_start_time, 1)
+                    yield {'type': 'stopped', 'message': f'⏹️ 任务已停止 | 总耗时: {task_duration}秒 | 执行了{step}步'}
                     return
                 
                 # 执行操作
+                action_start = time.time()
                 try:
                     action_result = self._execute_action(action)
+                    action_time = round((time.time() - action_start) * 1000)
                     previous_action_result = f"{message} -> {action_result}"
                     last_action = action  # 记录执行的操作
-                    yield {'type': 'done', 'message': f'✓ {action_result}'}
+                    # 记录到操作历史
+                    action_history.append(f"{message} ({action_result})")
+                    yield {'type': 'done', 'message': f'✓ {action_result} ({action_time}ms)'}
                 except Exception as e:
+                    action_time = round((time.time() - action_start) * 1000)
                     previous_action_result = f"{message} -> 失败: {str(e)}"
                     last_action = None
-                    yield {'type': 'warning', 'message': f'⚠️ {str(e)}'}
+                    action_history.append(f"{message} (失败: {str(e)})")
+                    yield {'type': 'warning', 'message': f'⚠️ {str(e)} ({action_time}ms)'}
                 
                 # 等待并获取新状态
                 time.sleep(self.action_delay)
                 
                 try:
-                    current_screenshot, current_ui_hierarchy, current_app, current_ocr = self._get_screen_state()
+                    current_screenshot, current_ui_hierarchy, current_app, current_ocr, step_timing = self._get_screen_state(
+                        skip_ui_hierarchy=self.skip_ui_hierarchy
+                    )
                     ocr_count = len(current_ocr.get('elements', [])) if current_ocr else 0
                     
                     # 检测页面边界（滑动后内容是否变化）
@@ -265,18 +411,23 @@ class AgentService:
                         previous_action_result += f"\n{boundary_info}"
                         yield {'type': 'warning', 'message': f'⚠️ 检测到页面边界，内容无变化'}
                     
+                    # 格式化耗时
+                    timing_str = self._format_timing(step_timing)
                     yield {
                         'type': 'update',
-                        'message': f'📱 当前: {current_app.get("package", "").split(".")[-1] or "未知"} | OCR: {ocr_count}个',
-                        'screenshot': current_screenshot
+                        'message': f'📱 当前: {current_app.get("package", "").split(".")[-1] or "未知"} | OCR: {ocr_count}个 | ⏱️ {timing_str}',
+                        'screenshot': current_screenshot,
+                        'timing': step_timing
                     }
                 except Exception as e:
                     yield {'type': 'warning', 'message': f'⚠️ 获取屏幕失败，继续'}
             else:
-                yield {'type': 'error', 'message': f'❌ 无效响应'}
+                task_duration = round(time.time() - task_start_time, 1)
+                yield {'type': 'error', 'message': f'❌ 无效响应 | 总耗时: {task_duration}秒 | 执行了{step}步'}
                 return
         
-        yield {'type': 'warning', 'message': f'⏱️ 已达最大步数({self.max_steps}步)'}
+        task_duration = round(time.time() - task_start_time, 1)
+        yield {'type': 'warning', 'message': f'⏱️ 已达最大步数({self.max_steps}步) | 总耗时: {task_duration}秒'}
     
     def _execute_action(self, action: Dict[str, Any]) -> str:
         """执行单个操作"""

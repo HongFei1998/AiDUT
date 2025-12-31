@@ -604,5 +604,5 @@ class DeviceService:
 
 if __name__ == '__main__':
     dut = DeviceService()
-    dut.connect("10.1.22.60:36941")
+    dut.connect("10.1.22.60:39733")
     print(dut.dump_hierarchy())

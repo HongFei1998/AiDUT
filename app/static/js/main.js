@@ -442,7 +442,7 @@ class AIPhoneAssistant {
             statusDot.classList.remove('disconnected');
             statusDot.classList.add('connected');
             statusText.textContent = '已连接';
-            this.btnConnect.textContent = '断开连接';
+            this.btnConnect.textContent = '连接设备';
             if (info) {
                 this.deviceInfo.textContent = `${info.brand} ${info.model}`;
             }

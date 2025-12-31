@@ -146,28 +146,12 @@ class PresetService:
         """
         task_lower = task.lower()
         
-        # APP名称到包名的映射
-        app_keywords = {
-            'com.tencent.mm': ['微信', 'wechat'],
-            'com.sankuai.meituan': ['美团'],
-            'com.eg.android.AlipayGphone': ['支付宝', 'alipay'],
-            'com.taobao.taobao': ['淘宝'],
-            'com.ss.android.ugc.aweme': ['抖音', 'douyin', 'tiktok'],
-            'com.jingdong.app.mall': ['京东', 'jd'],
-            'com.tencent.mobileqq': ['qq', 'QQ'],
-            'com.sina.weibo': ['微博', 'weibo'],
-            'com.netease.cloudmusic': ['网易云', '云音乐'],
-            'com.kugou.android': ['酷狗'],
-            'com.tencent.qqmusic': ['qq音乐', 'QQ音乐'],
-            'com.autonavi.minimap': ['高德', '高德地图'],
-            'com.baidu.BaiduMap': ['百度地图'],
-            'com.dianping.v1': ['大众点评', '点评'],
-        }
+        # 从动态映射中查找
+        mapping = self.get_app_package_mapping()
         
-        for package, keywords in app_keywords.items():
-            for keyword in keywords:
-                if keyword.lower() in task_lower:
-                    return package
+        for app_name, package in mapping.items():
+            if app_name.lower() in task_lower:
+                return package
         
         return None
     
@@ -196,3 +180,84 @@ class PresetService:
                 'preset_count': len(info.get('presets', {}))
             })
         return apps
+    
+    def get_app_package_mapping(self) -> Dict[str, str]:
+        """
+        获取 APP 名称到包名的映射
+        用于 AI 启动应用时查找包名
+        
+        Returns:
+            {app_name: package_name} 映射字典
+        """
+        mapping = {}
+        
+        # 从预设配置中提取
+        for package, info in self._presets.items():
+            app_name = info.get('app_name', '')
+            if app_name:
+                mapping[app_name] = package
+        
+        # 补充常用 APP（可能不在预设中但常用）
+        common_apps = {
+            '设置': 'com.android.settings',
+            '电话': 'com.android.dialer',
+            '短信': 'com.android.mms',
+            '相机': 'com.android.camera',
+            '相册': 'com.android.gallery3d',
+            '日历': 'com.android.calendar',
+            '时钟': 'com.android.deskclock',
+            '计算器': 'com.android.calculator2',
+            '文件管理': 'com.android.fileexplorer',
+            'QQ': 'com.tencent.mobileqq',
+            '微博': 'com.sina.weibo',
+            '网易云音乐': 'com.netease.cloudmusic',
+            'QQ音乐': 'com.tencent.qqmusic',
+            '酷狗音乐': 'com.kugou.android',
+            '高德地图': 'com.autonavi.minimap',
+            '百度地图': 'com.baidu.BaiduMap',
+            '大众点评': 'com.dianping.v1',
+            '饿了么': 'me.ele',
+            '滴滴出行': 'com.sdu.didi.psnger',
+            '哔哩哔哩': 'tv.danmaku.bili',
+            'B站': 'tv.danmaku.bili',
+            '小红书': 'com.xingin.xhs',
+            '今日头条': 'com.ss.android.article.news',
+            '钉钉': 'com.alibaba.android.rimet',
+            '飞书': 'com.ss.android.lark',
+            '腾讯会议': 'com.tencent.wemeet.app',
+            '百度': 'com.baidu.searchbox',
+            '知乎': 'com.zhihu.android',
+            '拼多多': 'com.xunmeng.pinduoduo',
+            '闲鱼': 'com.taobao.idlefish',
+            '携程': 'ctrip.android.view',
+            '去哪儿': 'com.Qunar',
+            '优酷': 'com.youku.phone',
+            '爱奇艺': 'com.qiyi.video',
+            '腾讯视频': 'com.tencent.qqlive',
+            '芒果TV': 'com.hunantv.imgo.activity',
+            'UC浏览器': 'com.UCMobile',
+            'Chrome': 'com.android.chrome',
+            '快手': 'com.smile.gifmaker',
+        }
+        
+        # 合并，预设中的优先
+        for name, package in common_apps.items():
+            if name not in mapping:
+                mapping[name] = package
+        
+        return mapping
+    
+    def format_app_packages_for_ai(self) -> str:
+        """
+        格式化 APP 包名列表，供 AI 启动应用时参考
+        
+        Returns:
+            格式化的 APP 包名列表字符串
+        """
+        mapping = self.get_app_package_mapping()
+        
+        lines = []
+        for app_name, package in sorted(mapping.items(), key=lambda x: x[0]):
+            lines.append(f"  {app_name}: {package}")
+        
+        return '\n'.join(lines)

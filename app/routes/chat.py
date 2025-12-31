@@ -73,3 +73,43 @@ def clear_history():
     """清空对话历史"""
     llm_service.clear_history()
     return jsonify({'success': True, 'message': '对话历史已清空'})
+
+
+@chat_bp.route('/settings', methods=['GET'])
+def get_settings():
+    """获取 Agent 设置"""
+    return jsonify({
+        'success': True,
+        'data': {
+            'max_steps': agent_service.max_steps,
+            'action_delay': agent_service.action_delay,
+            'skip_ui_hierarchy': agent_service.skip_ui_hierarchy,
+            'parallel_enabled': agent_service.parallel_enabled
+        }
+    })
+
+
+@chat_bp.route('/settings', methods=['POST'])
+def update_settings():
+    """更新 Agent 设置"""
+    data = request.get_json() or {}
+    
+    if 'max_steps' in data:
+        agent_service.max_steps = int(data['max_steps'])
+    if 'action_delay' in data:
+        agent_service.action_delay = float(data['action_delay'])
+    if 'skip_ui_hierarchy' in data:
+        agent_service.skip_ui_hierarchy = bool(data['skip_ui_hierarchy'])
+    if 'parallel_enabled' in data:
+        agent_service.parallel_enabled = bool(data['parallel_enabled'])
+    
+    return jsonify({
+        'success': True,
+        'message': '设置已更新',
+        'data': {
+            'max_steps': agent_service.max_steps,
+            'action_delay': agent_service.action_delay,
+            'skip_ui_hierarchy': agent_service.skip_ui_hierarchy,
+            'parallel_enabled': agent_service.parallel_enabled
+        }
+    })

@@ -45,34 +45,78 @@ class LLMService:
     
     def _build_system_prompt(self) -> str:
         """构建系统提示词 - Agent模式"""
-        return """你是一个Android手机自动化助手。根据用户指令和当前屏幕状态，一步一步完成任务。
+        # 获取 APP 包名映射表
+        preset_service = self._get_preset_service()
+        app_packages = preset_service.format_app_packages_for_ai()
+        
+        return f"""你是一个Android手机自动化助手。根据用户指令和当前屏幕状态，一步一步完成任务。
 
 重要规则：
 1. 每次只返回一个操作
-2. 优先使用OCR识别的文字信息来定位元素，OCR结果包含文字内容和精确的中心点坐标，可直接用于点击
-3. UI布局信息作为辅助，bounds属性格式为[left,top][right,bottom]，点击时使用中心坐标
-4. 执行完一步后会收到新的屏幕状态，再决定下一步
-5. 任务完成返回 {"status": "completed", "message": "说明"}
-6. 无法继续返回 {"status": "failed", "message": "原因"}
-7. 需要操作返回 {"status": "action", "action": {...}, "message": "说明"}
+2. 打开APP时，必须使用 start_app 操作并提供正确的包名，不要通过点击桌面图标
+3. 优先使用UI布局信息来定位元素，bounds属性格式为[left,top][right,bottom]，点击坐标计算：x=(left+right)/2, y=(top+bottom)/2
+4. OCR识别结果作为辅助，用于识别UI布局中没有text属性的元素，或验证元素内容
+5. 执行完一步后会收到新的屏幕状态，再决定下一步
+6. 任务完成返回 {{"status": "completed", "message": "说明"}}
+7. 无法继续返回 {{"status": "failed", "message": "原因"}}
+8. 需要操作返回 {{"status": "action", "action": {{...}}, "message": "说明"}}
 
-滑动查找规则（重要）：
+【任务完成判断规则 - 非常重要】：
+★ 判断任务是否完成要基于【用户的原始任务目标】，而不是"当前还能做什么"
+
+1. 数量限定任务（第一个/一封/一条等）：
+   - "删除第一封邮件" → 删除操作执行后立即返回completed，不管列表中还有没有邮件
+   - "删除一条消息" → 删除一条后就完成，不要继续删除其他的
+   - 这类任务执行一次目标操作后就完成，不要因为"还有更多"就继续执行
+
+2. 发送/提交类任务：
+   - 发送消息：点击发送按钮后，如果输入框已清空或消息出现在聊天区域，说明发送成功
+   - 发送成功的标志：输入框变空、消息气泡出现、发送按钮状态变化
+   - 不要因为"可以继续发送更多"而不返回completed
+
+3. 打开/进入类任务：
+   - "打开微信" → APP启动并显示主界面后completed
+   - "进入设置" → 设置页面出现后completed
+
+4. 查找/查看类任务：
+   - "查看第一条通知" → 打开通知内容后completed
+   - "查找xxx" → 找到目标内容并展示后completed
+
+5. 一般原则：
+   - 用户任务完成了就返回completed，不要主动做额外操作
+   - 如果用户说"删除第一个"，删完后当前的"第一个"是新的内容，不属于原任务范围
+   - 区分"任务完成"和"还能继续操作"，前者才是判断标准
+
+滑动查找规则：
 - 如果上一步操作结果提示"页面已到达底部/顶部"，说明继续同方向滑动无效
 - 此时应该改变滑动方向：到底部后向下滑动（回到顶部），到顶部后向上滑动（向底部）
 - 如果两个方向都滑动过了还是找不到目标，考虑目标可能不在当前页面
 
 可用操作：
-- 点击: {"type": "click", "params": {"x": 540, "y": 1200}}
-  （优先使用OCR结果中的center坐标，或从bounds计算：x=(left+right)/2, y=(top+bottom)/2）
-- 滑动: {"type": "swipe", "params": {"direction": "up/down/left/right"}}
+- 启动应用: {{"type": "start_app", "params": {{"package": "com.xxx.xxx"}}}}
+  ★ 打开APP时优先使用此操作，直接通过包名启动，更快更可靠
+- 点击: {{"type": "click", "params": {{"x": 540, "y": 1200}}}}
+  （优先从UI布局的bounds计算：x=(left+right)/2, y=(top+bottom)/2，OCR坐标作为备选）
+- 滑动: {{"type": "swipe", "params": {{"direction": "up/down/left/right"}}}}
   （up=向上滑动查看下方内容, down=向下滑动查看上方内容）
-- 输入: {"type": "input", "params": {"text": "文本"}}
-- 按键: {"type": "press", "params": {"key": "back/home/enter"}}
-- 等待: {"type": "wait", "params": {"seconds": 2}}
-- 启动应用: {"type": "start_app", "params": {"package": "com.xxx.xxx"}}
+- 输入: {{"type": "input", "params": {{"text": "文本"}}}}
+- 按键: {{"type": "press", "params": {{"key": "back/home/enter"}}}}
+- 等待: {{"type": "wait", "params": {{"seconds": 2}}}}
+
+【记忆功能 - 重要】：
+如果任务需要你记住某些信息（如短信内容、联系人名字、查询结果等），在返回中添加 "memory" 字段：
+{{"status": "action", "action": {{...}}, "message": "说明", "memory": "需要记住的关键信息"}}
+
+示例：
+- 任务"看第一封短信内容告诉我" → 看到短信后记录: "memory": "短信内容：明天下午3点开会"
+- 任务"查余额然后告诉我" → 看到余额后记录: "memory": "账户余额：1234.56元"
+- 记忆会在后续步骤中提供给你，确保任务完成时能准确回复用户
+
+【常用APP包名】（打开应用时使用）:
+{app_packages}
 
 严格按JSON格式返回，无其他内容：
-{"status": "action/completed/failed", "action": {...}, "message": "说明"}
+{{"status": "action/completed/failed", "action": {{...}}, "message": "说明"}}
 """
     
     def analyze_and_act(
@@ -83,7 +127,10 @@ class LLMService:
         current_app: Optional[Dict[str, str]] = None,
         previous_action: Optional[str] = None,
         ocr_result: Optional[Dict[str, Any]] = None,
-        previous_app_package: Optional[str] = None
+        previous_app_package: Optional[str] = None,
+        step_number: int = 1,
+        action_history: Optional[List[str]] = None,
+        memories: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         分析当前屏幕并决定下一步操作
@@ -96,12 +143,15 @@ class LLMService:
             previous_action: 上一步操作结果
             ocr_result: OCR识别结果，包含文字和坐标信息
             previous_app_package: 上一步的APP包名（用于检测APP切换）
+            step_number: 当前步骤编号
+            action_history: 历史操作摘要列表
         """
         client = self._get_client()
         model = self._get_model()
         
         # 构建用户消息
         user_message = f"用户任务: {task}\n"
+        user_message += f"当前是第 {step_number} 步\n"
         
         # 获取当前APP包名
         current_package = current_app.get('package', '') if current_app else ''
@@ -131,19 +181,33 @@ class LLMService:
             user_message += "\n"
         
         if previous_action:
-            user_message += f"\n上一步操作: {previous_action}\n"
+            user_message += f"\n上一步操作结果: {previous_action}\n"
         
-        # 优先添加OCR识别结果（更精确的文字和坐标信息）
+        # 添加历史操作摘要（帮助判断任务进度）
+        if action_history and len(action_history) > 0:
+            user_message += f"\n【已执行的操作历史】:\n"
+            for i, action_desc in enumerate(action_history[-5:], 1):  # 最近5步
+                user_message += f"  {i}. {action_desc}\n"
+            user_message += "（请根据以上历史判断任务是否已完成，不要重复执行已完成的操作）\n"
+        
+        # 添加记忆信息（任务过程中记录的关键信息）
+        if memories and len(memories) > 0:
+            user_message += f"\n【已记录的关键信息】:\n"
+            for i, memory in enumerate(memories, 1):
+                user_message += f"  {i}. {memory}\n"
+            user_message += "（这些是你在之前步骤中记录的信息，完成任务时可能需要用到）\n"
+        
+        # 优先添加UI布局信息（主要定位依据）
+        if ui_hierarchy:
+            ui_summary = self._summarize_ui(ui_hierarchy)
+            user_message += f"\n【UI布局元素（主要）】:\n{ui_summary}\n"
+        
+        # OCR识别结果作为辅助
         if ocr_result and ocr_result.get('elements'):
             ocr_summary = self._summarize_ocr(ocr_result)
-            user_message += f"\n【OCR识别的屏幕文字（含精确坐标）】:\n{ocr_summary}\n"
+            user_message += f"\n【OCR识别文字（辅助）】:\n{ocr_summary}\n"
         
-        if ui_hierarchy:
-            # 提取关键UI信息
-            ui_summary = self._summarize_ui(ui_hierarchy)
-            user_message += f"\n【UI布局元素】:\n{ui_summary}\n"
-        
-        user_message += "\n请分析当前屏幕，决定下一步操作。优先使用OCR结果中的坐标进行点击。只返回JSON格式。"
+        user_message += "\n请分析当前屏幕，决定下一步操作。优先使用UI布局的bounds计算点击坐标。只返回JSON格式。"
         
         # 构建消息
         messages = [
