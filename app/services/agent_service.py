@@ -67,6 +67,33 @@ class AgentService:
         elements = ocr_result.get('elements', [])
         return set(elem['text'] for elem in elements if elem.get('text'))
     
+    def _summarize_ocr_for_comparison(self, ocr_result: Dict[str, Any], max_items: int = 15) -> str:
+        """
+        生成 OCR 摘要，供 AI 对比操作前后的变化
+        
+        Args:
+            ocr_result: OCR 识别结果
+            max_items: 最大文字数量
+            
+        Returns:
+            OCR 文字摘要字符串
+        """
+        if not ocr_result or ocr_result.get('error'):
+            return "无法识别"
+        
+        elements = ocr_result.get('elements', [])
+        if not elements:
+            return "屏幕无文字"
+        
+        # 提取文字，过滤太短的
+        texts = [elem['text'] for elem in elements if elem.get('text') and len(elem['text']) > 1]
+        
+        # 限制数量
+        if len(texts) > max_items:
+            texts = texts[:max_items]
+        
+        return ", ".join(texts)
+    
     def _calculate_content_similarity(self, texts1: set, texts2: set) -> float:
         """
         计算两个文字集合的相似度 (Jaccard相似度)
@@ -367,9 +394,12 @@ class AgentService:
                 return
             
             elif status == 'action' and action:
+                # 检测是否为链式操作
+                is_chain = isinstance(action, list) and len(action) > 1
+                chain_info = f" [链式x{len(action)}]" if is_chain else ""
                 yield {
                     'type': 'action',
-                    'message': f'▶️ 步骤{step}: {message} (AI:{ai_time}ms)',
+                    'message': f'▶️ 步骤{step}: {message}{chain_info} (AI:{ai_time}ms)',
                     'action': action,
                     'debug': debug
                 }
@@ -381,18 +411,26 @@ class AgentService:
                 
                 # 执行操作
                 action_start = time.time()
+                # 记录执行前的状态（供 AI 对比判断）
+                pre_ocr_summary = self._summarize_ocr_for_comparison(current_ocr)
+                pre_package = current_app.get('package', '') if current_app else ''
+                
                 try:
                     action_result = self._execute_action(action)
                     action_time = round((time.time() - action_start) * 1000)
-                    previous_action_result = f"{message} -> {action_result}"
                     last_action = action  # 记录执行的操作
                     # 记录到操作历史
                     action_history.append(f"{message} ({action_result})")
                     yield {'type': 'done', 'message': f'✓ {action_result} ({action_time}ms)'}
+                    
+                    # 记录上一步操作结果
+                    previous_action_result = f"执行: {action_result}"
                 except Exception as e:
                     action_time = round((time.time() - action_start) * 1000)
-                    previous_action_result = f"{message} -> 失败: {str(e)}"
+                    previous_action_result = f"执行失败: {str(e)}"
                     last_action = None
+                    pre_ocr_summary = None  # 执行失败时不需要对比
+                    pre_package = None
                     action_history.append(f"{message} (失败: {str(e)})")
                     yield {'type': 'warning', 'message': f'⚠️ {str(e)} ({action_time}ms)'}
                 
@@ -405,11 +443,16 @@ class AgentService:
                     )
                     ocr_count = len(current_ocr.get('elements', [])) if current_ocr else 0
                     
-                    # 检测页面边界（滑动后内容是否变化）
+                    # 添加操作前的状态供 AI 对比
+                    if pre_package:
+                        previous_action_result += f"\n【操作前APP】: {pre_package}"
+                    if pre_ocr_summary:
+                        previous_action_result += f"\n【操作前屏幕文字】: {pre_ocr_summary}"
+                    
+                    # 检测页面边界（滑动后内容是否变化）- 保留原有逻辑
                     boundary_info = self._detect_page_boundary(current_ocr, last_action)
                     if boundary_info:
                         previous_action_result += f"\n{boundary_info}"
-                        yield {'type': 'warning', 'message': f'⚠️ 检测到页面边界，内容无变化'}
                     
                     # 格式化耗时
                     timing_str = self._format_timing(step_timing)
@@ -429,8 +472,8 @@ class AgentService:
         task_duration = round(time.time() - task_start_time, 1)
         yield {'type': 'warning', 'message': f'⏱️ 已达最大步数({self.max_steps}步) | 总耗时: {task_duration}秒'}
     
-    def _execute_action(self, action: Dict[str, Any]) -> str:
-        """执行单个操作"""
+    def _execute_single_action(self, action: Dict[str, Any]) -> str:
+        """执行单个操作（内部方法）"""
         action_type = action.get('type')
         params = action.get('params', {})
         
@@ -476,8 +519,32 @@ class AgentService:
         else:
             raise Exception(f'未知操作: {action_type}')
     
-    def execute_single_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
-        """执行单个操作"""
+    def _execute_action(self, action) -> str:
+        """
+        执行操作（支持单个操作或操作数组）
+        
+        Args:
+            action: 单个操作字典或操作数组
+            
+        Returns:
+            执行结果描述
+        """
+        # 支持链式操作：action 可以是数组
+        if isinstance(action, list):
+            results = []
+            for i, single_action in enumerate(action):
+                result = self._execute_single_action(single_action)
+                results.append(result)
+                # 链式操作之间的短暂延迟（确保操作生效）
+                if i < len(action) - 1:
+                    time.sleep(0.3)
+            return ' → '.join(results)
+        else:
+            # 单个操作
+            return self._execute_single_action(action)
+    
+    def execute_single_action(self, action) -> Dict[str, Any]:
+        """执行单个操作或链式操作"""
         try:
             result = self._execute_action(action)
             return {'success': True, 'message': result}

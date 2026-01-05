@@ -61,6 +61,13 @@ class LLMService:
 7. 无法继续返回 {{"status": "failed", "message": "原因"}}
 8. 需要操作返回 {{"status": "action", "action": {{...}}, "message": "说明"}}
 
+【上一步执行验证】：
+上一步操作结果中会包含操作前的APP包名和屏幕文字摘要，对比当前状态可判断操作是否生效：
+- APP包名变化 → APP切换成功
+- 页面文字有明显变化 → 操作成功，继续下一步
+- 页面文字几乎没变 → 可能操作未生效（但点击输入框等情况属于正常）
+- 根据任务目标和当前屏幕状态判断是继续执行还是重试
+
 【任务完成判断规则 - 非常重要】：
 ★ 判断任务是否完成要基于【用户的原始任务目标】，而不是"当前还能做什么"
 
@@ -96,12 +103,28 @@ class LLMService:
 - 启动应用: {{"type": "start_app", "params": {{"package": "com.xxx.xxx"}}}}
   ★ 打开APP时优先使用此操作，直接通过包名启动，更快更可靠
 - 点击: {{"type": "click", "params": {{"x": 540, "y": 1200}}}}
-  （优先从UI布局的bounds计算：x=(left+right)/2, y=(top+bottom)/2，OCR坐标作为备选）
+  （优先从UI布局的bounds计算：x=(left+right)/2, y=(top+bottom)/2，OCR坐标作为备选，且点击操作必须是提供给你的坐标（无论是UI布局还是OCR识别结果））
 - 滑动: {{"type": "swipe", "params": {{"direction": "up/down/left/right"}}}}
   （up=向上滑动查看下方内容, down=向下滑动查看上方内容）
 - 输入: {{"type": "input", "params": {{"text": "文本"}}}}
 - 按键: {{"type": "press", "params": {{"key": "back/home/enter"}}}}
 - 等待: {{"type": "wait", "params": {{"seconds": 2}}}}
+
+【链式操作优化】：
+某些操作可以合并执行以提高效率。当明确知道下一步操作时，可以返回操作数组：
+{{"status": "action", "action": [{{"type": "操作1", ...}}, {{"type": "操作2", ...}}], "message": "说明"}}
+
+★ 可以链式的组合（只有这些情况才能链式，其他情况必须单步执行）：
+1. home + start_app：需要返回桌面再打开APP时，合并为一步
+   示例：{{"action": [{{"type": "press", "params": {{"key": "home"}}}}, {{"type": "start_app", "params": {{"package": "com.xxx"}}}}]}}
+2. back + start_app：从当前APP返回并打开另一个APP时
+   示例：{{"action": [{{"type": "press", "params": {{"key": "back"}}}}, {{"type": "start_app", "params": {{"package": "com.xxx"}}}}]}}
+
+★ 不能链式的情况（必须单步执行，等待屏幕反馈）：
+- click后需要看点击结果
+- swipe后需要看滑动后内容
+- input后需要确认输入
+- 任何不确定下一步的情况
 
 【记忆功能 - 重要】：
 如果任务需要你记住某些信息（如短信内容、联系人名字、查询结果等），在返回中添加 "memory" 字段：

@@ -1,6 +1,7 @@
 {
   "com.tencent.mm": {
     "app_name": "微信",
+    "aliases": ["WeChat", "wechat"],
     "presets": {
       "发消息": {
         "keywords": ["发消息", "发信息", "聊天", "找人"],
@@ -43,144 +44,35 @@
       }
     }
   },
-  
-  "com.sankuai.meituan": {
-    "app_name": "美团",
-    "presets": {
-      "点外卖": {
-        "keywords": ["外卖", "点餐", "订餐", "吃饭"],
-        "steps": [
-          "在首页点击「外卖」入口",
-          "选择想吃的店铺或菜品"
-        ]
-      },
-      "买菜": {
-        "keywords": ["买菜", "生鲜", "超市"],
-        "steps": [
-          "在首页点击「美团买菜」或「超市」",
-          "选择商品加入购物车"
-        ]
-      },
-      "订酒店": {
-        "keywords": ["酒店", "住宿", "订房"],
-        "steps": [
-          "在首页点击「酒店住宿」",
-          "选择日期和位置搜索"
-        ]
-      }
-    }
+
+  "com.tencent.mobileqq": {
+    "app_name": "QQ",
+    "aliases": ["qq"]
   },
-  
-  "com.eg.android.AlipayGphone": {
-    "app_name": "支付宝",
-    "presets": {
-      "扫码付款": {
-        "keywords": ["扫码", "付款", "扫一扫"],
-        "steps": [
-          "点击首页「扫一扫」"
-        ]
-      },
-      "收款码": {
-        "keywords": ["收款", "收钱", "收款码"],
-        "steps": [
-          "点击首页「收钱」"
-        ]
-      },
-      "转账": {
-        "keywords": ["转账", "转钱"],
-        "steps": [
-          "点击首页「转账」",
-          "输入对方账号或手机号",
-          "输入金额后确认"
-        ]
-      },
-      "查账单": {
-        "keywords": ["账单", "消费记录", "交易记录"],
-        "steps": [
-          "点击「我的」tab",
-          "点击「账单」查看"
-        ]
-      }
-    }
+
+  "com.sina.weibo": {
+    "app_name": "微博",
+    "aliases": ["Weibo", "weibo"]
   },
-  
-  "com.taobao.taobao": {
-    "app_name": "淘宝",
-    "presets": {
-      "搜索商品": {
-        "keywords": ["搜索", "找", "买"],
-        "steps": [
-          "点击顶部搜索框",
-          "输入商品关键词",
-          "点击搜索"
-        ]
-      },
-      "查看购物车": {
-        "keywords": ["购物车", "已加购"],
-        "steps": [
-          "点击底部「购物车」tab"
-        ]
-      },
-      "查看订单": {
-        "keywords": ["订单", "我买的", "物流"],
-        "steps": [
-          "点击底部「我的淘宝」",
-          "点击「我的订单」"
-        ]
-      }
-    }
+
+  "com.alibaba.android.rimet": {
+    "app_name": "钉钉",
+    "aliases": ["DingTalk", "dingtalk"]
   },
-  
-  "com.ss.android.ugc.aweme": {
-    "app_name": "抖音",
-    "presets": {
-      "搜索内容": {
-        "keywords": ["搜索", "找", "搜"],
-        "steps": [
-          "点击右上角搜索图标",
-          "输入搜索内容",
-          "点击搜索"
-        ]
-      },
-      "发布视频": {
-        "keywords": ["发视频", "发布", "拍摄"],
-        "steps": [
-          "点击底部中间的「+」号",
-          "选择拍摄或上传"
-        ]
-      },
-      "看直播": {
-        "keywords": ["直播", "看直播"],
-        "steps": [
-          "向左滑动切换到直播tab",
-          "或点击推荐中的直播间"
-        ]
-      }
-    }
+
+  "com.ss.android.lark": {
+    "app_name": "飞书",
+    "aliases": ["Lark", "lark", "Feishu"]
   },
-  
-  "com.jingdong.app.mall": {
-    "app_name": "京东",
-    "presets": {
-      "搜索商品": {
-        "keywords": ["搜索", "找", "买"],
-        "steps": [
-          "点击顶部搜索框",
-          "输入商品关键词搜索"
-        ]
-      },
-      "查看订单": {
-        "keywords": ["订单", "物流", "快递"],
-        "steps": [
-          "点击底部「我的」",
-          "点击「我的订单」"
-        ]
-      }
-    }
+
+  "com.tencent.wemeet.app": {
+    "app_name": "腾讯会议",
+    "aliases": ["VooV Meeting"]
   },
 
   "com.tencent.wework": {
     "app_name": "企业微信",
+    "aliases": ["WeCom", "wecom"],
     "presets": {
       "发消息": {
         "keywords": ["发消息", "发信息", "聊天", "找人", "私聊"],
@@ -211,5 +103,585 @@
         ]
       }
     }
+  },
+
+  "org.telegram.messenger": {
+    "app_name": "Telegram",
+    "aliases": ["telegram", "电报"]
+  },
+
+  "com.whatsapp": {
+    "app_name": "WhatsApp",
+    "aliases": ["whatsapp", "Whatsapp"]
+  },
+
+  "com.twitter.android": {
+    "app_name": "Twitter",
+    "aliases": ["twitter", "X", "x"]
+  },
+
+  "com.taobao.taobao": {
+    "app_name": "淘宝",
+    "aliases": ["Taobao", "taobao", "淘宝闪购"],
+    "presets": {
+      "搜索商品": {
+        "keywords": ["搜索", "找", "买"],
+        "steps": [
+          "点击顶部搜索框",
+          "输入商品关键词",
+          "点击搜索"
+        ]
+      },
+      "查看购物车": {
+        "keywords": ["购物车", "已加购"],
+        "steps": [
+          "点击底部「购物车」tab"
+        ]
+      },
+      "查看订单": {
+        "keywords": ["订单", "我买的", "物流"],
+        "steps": [
+          "点击底部「我的淘宝」",
+          "点击「我的订单」"
+        ]
+      }
+    }
+  },
+
+  "com.jingdong.app.mall": {
+    "app_name": "京东",
+    "aliases": ["JD", "jd", "京东秒送"],
+    "presets": {
+      "搜索商品": {
+        "keywords": ["搜索", "找", "买"],
+        "steps": [
+          "点击顶部搜索框",
+          "输入商品关键词搜索"
+        ]
+      },
+      "查看订单": {
+        "keywords": ["订单", "物流", "快递"],
+        "steps": [
+          "点击底部「我的」",
+          "点击「我的订单」"
+        ]
+      }
+    }
+  },
+
+  "com.xunmeng.pinduoduo": {
+    "app_name": "拼多多",
+    "aliases": ["Pinduoduo", "pinduoduo", "PDD", "pdd"]
+  },
+
+  "com.taobao.idlefish": {
+    "app_name": "闲鱼",
+    "aliases": ["Xianyu", "xianyu"]
+  },
+
+  "com.einnovation.temu": {
+    "app_name": "Temu",
+    "aliases": ["temu", "TEMU"]
+  },
+
+  "com.sankuai.meituan": {
+    "app_name": "美团",
+    "aliases": ["Meituan", "meituan"],
+    "presets": {
+      "点外卖": {
+        "keywords": ["外卖", "点餐", "订餐", "吃饭"],
+        "steps": [
+          "在首页点击「外卖」入口",
+          "选择想吃的店铺或菜品"
+        ]
+      },
+      "买菜": {
+        "keywords": ["买菜", "生鲜", "超市"],
+        "steps": [
+          "在首页点击「美团买菜」或「超市」",
+          "选择商品加入购物车"
+        ]
+      },
+      "订酒店": {
+        "keywords": ["酒店", "住宿", "订房"],
+        "steps": [
+          "在首页点击「酒店住宿」",
+          "选择日期和位置搜索"
+        ]
+      }
+    }
+  },
+
+  "com.dianping.v1": {
+    "app_name": "大众点评",
+    "aliases": ["Dianping", "dianping"]
+  },
+
+  "me.ele": {
+    "app_name": "饿了么",
+    "aliases": ["Eleme", "eleme", "饿了吗"]
+  },
+
+  "com.yek.android.kfc.activitys": {
+    "app_name": "肯德基",
+    "aliases": ["KFC", "kfc"]
+  },
+
+  "com.mcdonalds.app": {
+    "app_name": "麦当劳",
+    "aliases": ["McDonald", "McDonalds", "麦当当"]
+  },
+
+  "com.xingin.xhs": {
+    "app_name": "小红书",
+    "aliases": ["RedNote", "rednote", "RED", "Xiaohongshu"]
+  },
+
+  "com.douban.frodo": {
+    "app_name": "豆瓣",
+    "aliases": ["Douban", "douban"]
+  },
+
+  "com.zhihu.android": {
+    "app_name": "知乎",
+    "aliases": ["Zhihu", "zhihu"]
+  },
+
+  "com.quora.android": {
+    "app_name": "Quora",
+    "aliases": ["quora"]
+  },
+
+  "com.reddit.frontpage": {
+    "app_name": "Reddit",
+    "aliases": ["reddit"]
+  },
+
+  "com.eg.android.AlipayGphone": {
+    "app_name": "支付宝",
+    "aliases": ["Alipay", "alipay"],
+    "presets": {
+      "扫码付款": {
+        "keywords": ["扫码", "付款", "扫一扫"],
+        "steps": [
+          "点击首页「扫一扫」"
+        ]
+      },
+      "收款码": {
+        "keywords": ["收款", "收钱", "收款码"],
+        "steps": [
+          "点击首页「收钱」"
+        ]
+      },
+      "转账": {
+        "keywords": ["转账", "转钱"],
+        "steps": [
+          "点击首页「转账」",
+          "输入对方账号或手机号",
+          "输入金额后确认"
+        ]
+      },
+      "查账单": {
+        "keywords": ["账单", "消费记录", "交易记录"],
+        "steps": [
+          "点击「我的」tab",
+          "点击「账单」查看"
+        ]
+      }
+    }
+  },
+
+  "com.autonavi.minimap": {
+    "app_name": "高德地图",
+    "aliases": ["Amap", "amap", "高德"]
+  },
+
+  "com.baidu.BaiduMap": {
+    "app_name": "百度地图",
+    "aliases": ["BaiduMap", "baidumap"]
+  },
+
+  "com.google.android.apps.maps": {
+    "app_name": "Google Maps",
+    "aliases": ["GoogleMaps", "googlemaps", "谷歌地图"]
+  },
+
+  "net.osmand": {
+    "app_name": "OsmAnd",
+    "aliases": ["Osmand", "osmand"]
+  },
+
+  "com.sdu.didi.psnger": {
+    "app_name": "滴滴出行",
+    "aliases": ["DiDi", "didi", "滴滴"]
+  },
+
+  "ctrip.android.view": {
+    "app_name": "携程",
+    "aliases": ["Ctrip", "ctrip", "携程旅行"]
+  },
+
+  "com.MobileTicket": {
+    "app_name": "铁路12306",
+    "aliases": ["12306", "中国铁路"]
+  },
+
+  "com.Qunar": {
+    "app_name": "去哪儿",
+    "aliases": ["Qunar", "qunar", "去哪儿旅行"]
+  },
+
+  "com.booking": {
+    "app_name": "Booking",
+    "aliases": ["booking", "Booking.com", "booking.com"]
+  },
+
+  "com.expedia.bookings": {
+    "app_name": "Expedia",
+    "aliases": ["expedia"]
+  },
+
+  "tv.danmaku.bili": {
+    "app_name": "哔哩哔哩",
+    "aliases": ["bilibili", "B站", "b站", "Bilibili"]
+  },
+
+  "com.ss.android.ugc.aweme": {
+    "app_name": "抖音",
+    "aliases": ["Douyin", "douyin"],
+    "presets": {
+      "搜索内容": {
+        "keywords": ["搜索", "找", "搜"],
+        "steps": [
+          "点击右上角搜索图标",
+          "输入搜索内容",
+          "点击搜索"
+        ]
+      },
+      "发布视频": {
+        "keywords": ["发视频", "发布", "拍摄"],
+        "steps": [
+          "点击底部中间的「+」号",
+          "选择拍摄或上传"
+        ]
+      },
+      "看直播": {
+        "keywords": ["直播", "看直播"],
+        "steps": [
+          "向左滑动切换到直播tab",
+          "或点击推荐中的直播间"
+        ]
+      }
+    }
+  },
+
+  "com.zhiliaoapp.musically": {
+    "app_name": "TikTok",
+    "aliases": ["Tiktok", "tiktok"]
+  },
+
+  "com.smile.gifmaker": {
+    "app_name": "快手",
+    "aliases": ["Kuaishou", "kuaishou"]
+  },
+
+  "com.tencent.qqlive": {
+    "app_name": "腾讯视频",
+    "aliases": ["TencentVideo", "腾讯"]
+  },
+
+  "com.qiyi.video": {
+    "app_name": "爱奇艺",
+    "aliases": ["iQiyi", "iqiyi", "爱奇艺视频"]
+  },
+
+  "com.youku.phone": {
+    "app_name": "优酷",
+    "aliases": ["Youku", "youku", "优酷视频"]
+  },
+
+  "com.hunantv.imgo.activity": {
+    "app_name": "芒果TV",
+    "aliases": ["MangoTV", "mangotv", "芒果"]
+  },
+
+  "com.phoenix.read": {
+    "app_name": "红果短剧",
+    "aliases": ["红果"]
+  },
+
+  "org.videolan.vlc": {
+    "app_name": "VLC",
+    "aliases": ["vlc", "VLC播放器"]
+  },
+
+  "com.netease.cloudmusic": {
+    "app_name": "网易云音乐",
+    "aliases": ["NetEaseMusic", "网易云", "云音乐"]
+  },
+
+  "com.tencent.qqmusic": {
+    "app_name": "QQ音乐",
+    "aliases": ["QQMusic", "qqmusic"]
+  },
+
+  "com.kugou.android": {
+    "app_name": "酷狗音乐",
+    "aliases": ["Kugou", "kugou", "酷狗"]
+  },
+
+  "com.luna.music": {
+    "app_name": "汽水音乐",
+    "aliases": ["汽水"]
+  },
+
+  "com.ximalaya.ting.android": {
+    "app_name": "喜马拉雅",
+    "aliases": ["Ximalaya", "ximalaya", "喜马拉雅FM"]
+  },
+
+  "code.name.monkey.retromusic": {
+    "app_name": "Retro Music",
+    "aliases": ["RetroMusic", "retromusic"]
+  },
+
+  "com.Project100Pi.themusicplayer": {
+    "app_name": "Pi Music Player",
+    "aliases": ["PiMusicPlayer", "pimusicplayer"]
+  },
+
+  "com.ss.android.article.news": {
+    "app_name": "今日头条",
+    "aliases": ["Toutiao", "toutiao", "头条"]
+  },
+
+  "com.tencent.news": {
+    "app_name": "腾讯新闻",
+    "aliases": ["TencentNews"]
+  },
+
+  "com.dragon.read": {
+    "app_name": "番茄小说",
+    "aliases": ["番茄免费小说", "番茄"]
+  },
+
+  "com.kmxs.reader": {
+    "app_name": "七猫免费小说",
+    "aliases": ["七猫小说", "七猫"]
+  },
+
+  "net.cozic.joplin": {
+    "app_name": "Joplin",
+    "aliases": ["joplin"]
+  },
+
+  "com.baidu.searchbox": {
+    "app_name": "百度",
+    "aliases": ["Baidu", "baidu", "百度搜索"]
+  },
+
+  "com.android.chrome": {
+    "app_name": "Chrome",
+    "aliases": ["chrome", "Google Chrome", "谷歌浏览器"]
+  },
+
+  "com.UCMobile": {
+    "app_name": "UC浏览器",
+    "aliases": ["UC", "uc", "UCBrowser"]
+  },
+
+  "com.tencent.androidqqmail": {
+    "app_name": "QQ邮箱",
+    "aliases": ["QQMail", "qqmail"]
+  },
+
+  "com.google.android.gm": {
+    "app_name": "Gmail",
+    "aliases": ["gmail", "Google Mail", "谷歌邮箱"]
+  },
+
+  "com.google.android.apps.docs": {
+    "app_name": "Google Drive",
+    "aliases": ["GoogleDrive", "googledrive", "谷歌云端硬盘"]
+  },
+
+  "com.google.android.apps.docs.editors.docs": {
+    "app_name": "Google Docs",
+    "aliases": ["GoogleDocs", "googledocs", "谷歌文档"]
+  },
+
+  "com.google.android.apps.docs.editors.slides": {
+    "app_name": "Google Slides",
+    "aliases": ["GoogleSlides", "googleslides", "谷歌幻灯片"]
+  },
+
+  "com.google.android.calendar": {
+    "app_name": "Google Calendar",
+    "aliases": ["GoogleCalendar", "谷歌日历"]
+  },
+
+  "com.google.android.keep": {
+    "app_name": "Google Keep",
+    "aliases": ["GoogleKeep", "googlekeep"]
+  },
+
+  "com.google.android.apps.tasks": {
+    "app_name": "Google Tasks",
+    "aliases": ["GoogleTasks", "googletasks"]
+  },
+
+  "com.google.android.apps.dynamite": {
+    "app_name": "Google Chat",
+    "aliases": ["GoogleChat", "googlechat"]
+  },
+
+  "com.google.android.contacts": {
+    "app_name": "Google Contacts",
+    "aliases": ["GoogleContacts", "谷歌联系人"]
+  },
+
+  "com.google.android.deskclock": {
+    "app_name": "Google Clock",
+    "aliases": ["GoogleClock", "谷歌时钟"]
+  },
+
+  "com.google.android.apps.nbu.files": {
+    "app_name": "Google Files",
+    "aliases": ["GoogleFiles", "Files by Google"]
+  },
+
+  "com.android.vending": {
+    "app_name": "Google Play Store",
+    "aliases": ["GooglePlayStore", "Play Store", "Play商店"]
+  },
+
+  "com.google.android.apps.books": {
+    "app_name": "Google Play Books",
+    "aliases": ["GooglePlayBooks", "Play Books"]
+  },
+
+  "com.google.android.apps.fitness": {
+    "app_name": "Google Fit",
+    "aliases": ["GoogleFit", "googlefit"]
+  },
+
+  "com.larus.nova": {
+    "app_name": "豆包",
+    "aliases": ["Doubao", "doubao"]
+  },
+
+  "com.gotokeep.keep": {
+    "app_name": "Keep",
+    "aliases": ["keep", "KEEP"]
+  },
+
+  "com.lingan.seeyou": {
+    "app_name": "美柚",
+    "aliases": ["Meiyou", "meiyou"]
+  },
+
+  "com.lianjia.beike": {
+    "app_name": "贝壳找房",
+    "aliases": ["贝壳", "Beike", "beike"]
+  },
+
+  "com.anjuke.android.app": {
+    "app_name": "安居客",
+    "aliases": ["Anjuke", "anjuke"]
+  },
+
+  "com.hexin.plat.android": {
+    "app_name": "同花顺",
+    "aliases": ["Tonghuashun", "tonghuashun"]
+  },
+
+  "com.miHoYo.hkrpg": {
+    "app_name": "崩坏：星穹铁道",
+    "aliases": ["星穹铁道", "Honkai Star Rail", "HSR"]
+  },
+
+  "com.papegames.lysk.cn": {
+    "app_name": "恋与深空",
+    "aliases": ["Love and Deepspace"]
+  },
+
+  "com.duolingo": {
+    "app_name": "Duolingo",
+    "aliases": ["duolingo", "多邻国"]
+  },
+
+  "com.android.settings": {
+    "app_name": "设置",
+    "aliases": ["Settings", "settings", "AndroidSystemSettings", "Android System Settings", "系统设置"]
+  },
+
+  "com.android.dialer": {
+    "app_name": "电话",
+    "aliases": ["Phone", "phone", "拨号"]
+  },
+
+  "com.android.mms": {
+    "app_name": "短信",
+    "aliases": ["Messages", "messages", "信息"]
+  },
+
+  "com.android.camera": {
+    "app_name": "相机",
+    "aliases": ["Camera", "camera"]
+  },
+
+  "com.android.gallery3d": {
+    "app_name": "相册",
+    "aliases": ["Gallery", "gallery", "图库"]
+  },
+
+  "com.android.calendar": {
+    "app_name": "日历",
+    "aliases": ["Calendar", "calendar"]
+  },
+
+  "com.android.deskclock": {
+    "app_name": "时钟",
+    "aliases": ["Clock", "clock", "闹钟"]
+  },
+
+  "com.android.calculator2": {
+    "app_name": "计算器",
+    "aliases": ["Calculator", "calculator"]
+  },
+
+  "com.android.fileexplorer": {
+    "app_name": "文件管理",
+    "aliases": ["Files", "files", "File Manager", "文件管理器"]
+  },
+
+  "com.android.contacts": {
+    "app_name": "联系人",
+    "aliases": ["Contacts", "contacts", "通讯录"]
+  },
+
+  "com.android.soundrecorder": {
+    "app_name": "录音机",
+    "aliases": ["AudioRecorder", "audiorecorder", "Voice Recorder"]
+  },
+
+  "com.rammigsoftware.bluecoins": {
+    "app_name": "Bluecoins",
+    "aliases": ["bluecoins"]
+  },
+
+  "com.flauschcode.broccoli": {
+    "app_name": "Broccoli",
+    "aliases": ["broccoli"]
+  },
+
+  "com.scientificcalculatorplus.simplecalculator.basiccalculator.mathcalc": {
+    "app_name": "Simple Calendar Pro",
+    "aliases": ["SimpleCalendarPro"]
+  },
+
+  "com.simplemobiletools.smsmessenger": {
+    "app_name": "Simple SMS Messenger",
+    "aliases": ["SimpleSMSMessenger"]
   }
 }

@@ -479,19 +479,12 @@ class AIPhoneAssistant {
     }
 
     startScreenRefresh() {
+        // 只在连接时刷新一次，不自动定时刷新
         this.refreshScreen();
-        this.screenRefreshInterval = setInterval(() => {
-            if (!this.isExecuting) {
-                this.refreshScreen();
-            }
-        }, 2000);
     }
 
     stopScreenRefresh() {
-        if (this.screenRefreshInterval) {
-            clearInterval(this.screenRefreshInterval);
-            this.screenRefreshInterval = null;
-        }
+        // 保留方法但不做任何操作（已移除定时刷新）
     }
 
     async handleScreenClick(e) {
@@ -534,6 +527,132 @@ class AIPhoneAssistant {
         `;
         this.screenWrapper.appendChild(effect);
         setTimeout(() => effect.remove(), 500);
+    }
+
+    /**
+     * 在屏幕上显示 AI 操作标记
+     */
+    showActionMarker(action) {
+        // 清除之前的标记
+        this.clearActionMarkers();
+        
+        // 处理链式操作（数组）
+        const actions = Array.isArray(action) ? action : [action];
+        
+        actions.forEach((act, index) => {
+            const delay = index * 300; // 链式操作依次显示
+            setTimeout(() => this._drawSingleActionMarker(act), delay);
+        });
+    }
+
+    _drawSingleActionMarker(action) {
+        const type = action.type;
+        const params = action.params || {};
+        
+        // 获取屏幕缩放比例
+        const rect = this.deviceScreen.getBoundingClientRect();
+        const scaleX = rect.width / this.deviceScreen.naturalWidth;
+        const scaleY = rect.height / this.deviceScreen.naturalHeight;
+        
+        if (type === 'click') {
+            this._showClickMarker(params.x * scaleX, params.y * scaleY);
+        } else if (type === 'swipe') {
+            this._showSwipeMarker(params.direction);
+        } else if (type === 'press') {
+            this._showPressMarker(params.key);
+        } else if (type === 'input') {
+            this._showInputMarker(params.text);
+        } else if (type === 'start_app') {
+            this._showAppMarker(params.package);
+        }
+    }
+
+    _showClickMarker(x, y) {
+        const marker = document.createElement('div');
+        marker.className = 'action-marker click-marker';
+        marker.innerHTML = `
+            <div class="marker-ring"></div>
+            <div class="marker-dot"></div>
+            <div class="marker-label">点击</div>
+        `;
+        marker.style.left = `${x}px`;
+        marker.style.top = `${y}px`;
+        this.screenWrapper.appendChild(marker);
+    }
+
+    _showSwipeMarker(direction) {
+        const marker = document.createElement('div');
+        marker.className = `action-marker swipe-marker swipe-${direction}`;
+        
+        const arrows = {
+            'up': '⬆️',
+            'down': '⬇️',
+            'left': '⬅️',
+            'right': '➡️'
+        };
+        const labels = {
+            'up': '向上滑动',
+            'down': '向下滑动',
+            'left': '向左滑动',
+            'right': '向右滑动'
+        };
+        
+        marker.innerHTML = `
+            <div class="swipe-arrow">${arrows[direction] || '↕️'}</div>
+            <div class="swipe-label">${labels[direction] || '滑动'}</div>
+        `;
+        this.screenWrapper.appendChild(marker);
+    }
+
+    _showPressMarker(key) {
+        const marker = document.createElement('div');
+        marker.className = 'action-marker press-marker';
+        
+        const icons = {
+            'home': '🏠',
+            'back': '◀️',
+            'recent': '▣',
+            'enter': '↵'
+        };
+        const labels = {
+            'home': 'Home键',
+            'back': '返回键',
+            'recent': '最近任务',
+            'enter': '确认'
+        };
+        
+        marker.innerHTML = `
+            <div class="press-icon">${icons[key] || '⌨️'}</div>
+            <div class="press-label">${labels[key] || key}</div>
+        `;
+        this.screenWrapper.appendChild(marker);
+    }
+
+    _showInputMarker(text) {
+        const marker = document.createElement('div');
+        marker.className = 'action-marker input-marker';
+        const displayText = text.length > 15 ? text.slice(0, 15) + '...' : text;
+        marker.innerHTML = `
+            <div class="input-icon">⌨️</div>
+            <div class="input-label">输入: "${displayText}"</div>
+        `;
+        this.screenWrapper.appendChild(marker);
+    }
+
+    _showAppMarker(packageName) {
+        const marker = document.createElement('div');
+        marker.className = 'action-marker app-marker';
+        const appName = packageName.split('.').pop();
+        marker.innerHTML = `
+            <div class="app-icon">📱</div>
+            <div class="app-label">启动: ${appName}</div>
+        `;
+        this.screenWrapper.appendChild(marker);
+    }
+
+    clearActionMarkers() {
+        const markers = this.screenWrapper.querySelectorAll('.action-marker');
+        markers.forEach(m => m.remove());
     }
 
     async pressKey(key) {
@@ -610,7 +729,7 @@ class AIPhoneAssistant {
             this.addSystemMessage('❌ 执行出错: ' + error.message, 'error');
         } finally {
             this.setExecutingState(false);
-            this.refreshScreen();
+            // 不自动刷新，截图已通过 SSE 流式返回
         }
     }
 
@@ -618,6 +737,8 @@ class AIPhoneAssistant {
         // 更新截图
         if (data.screenshot) {
             this.deviceScreen.src = data.screenshot;
+            // 截图更新时清除之前的操作标记
+            this.clearActionMarkers();
         }
         
         switch (data.type) {
@@ -632,21 +753,29 @@ class AIPhoneAssistant {
             case 'action':
                 this.removeThinking();
                 this.addSystemMessage(data.message, 'action', data.action, data.debug);
+                // 在屏幕上显示操作标记
+                if (data.action) {
+                    this.showActionMarker(data.action);
+                }
                 break;
             case 'done':
                 this.addSystemMessage(data.message, 'success');
                 break;
             case 'completed':
                 this.addSystemMessage(data.message, 'success', null, data.debug);
+                // 任务完成时清除标记
+                this.clearActionMarkers();
                 break;
             case 'failed':
             case 'error':
                 this.removeThinking();
                 this.addSystemMessage(data.message, 'error', null, data.debug);
+                this.clearActionMarkers();
                 break;
             case 'stopped':
                 this.removeThinking();
                 this.addSystemMessage(data.message, 'warning');
+                this.clearActionMarkers();
                 break;
             case 'warning':
                 this.addSystemMessage(data.message, 'warning');

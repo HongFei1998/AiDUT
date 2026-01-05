@@ -24,7 +24,11 @@ class PresetService:
                 with open(preset_file, 'r', encoding='utf-8') as f:
                     self._presets = json.load(f)
                 app_count = len(self._presets)
-                preset_count = sum(len(app.get('presets', {})) for app in self._presets.values())
+                preset_count = sum(
+                    len(app.get('presets', {})) 
+                    for app in self._presets.values() 
+                    if isinstance(app, dict)
+                )
                 print(f"已加载 {app_count} 个APP的 {preset_count} 个预设流程")
             else:
                 self._presets = {}
@@ -174,11 +178,12 @@ class PresetService:
         """获取所有支持预设的APP列表"""
         apps = []
         for package, info in self._presets.items():
-            apps.append({
-                'package': package,
-                'name': info.get('app_name', package),
-                'preset_count': len(info.get('presets', {}))
-            })
+            if isinstance(info, dict):
+                apps.append({
+                    'package': package,
+                    'name': info.get('app_name', package),
+                    'preset_count': len(info.get('presets', {}))
+                })
         return apps
     
     def get_app_package_mapping(self) -> Dict[str, str]:
@@ -191,59 +196,18 @@ class PresetService:
         """
         mapping = {}
         
-        # 从预设配置中提取
         for package, info in self._presets.items():
-            app_name = info.get('app_name', '')
-            if app_name:
-                mapping[app_name] = package
-        
-        # 补充常用 APP（可能不在预设中但常用）
-        common_apps = {
-            '设置': 'com.android.settings',
-            '电话': 'com.android.dialer',
-            '短信': 'com.android.mms',
-            '相机': 'com.android.camera',
-            '相册': 'com.android.gallery3d',
-            '日历': 'com.android.calendar',
-            '时钟': 'com.android.deskclock',
-            '计算器': 'com.android.calculator2',
-            '文件管理': 'com.android.fileexplorer',
-            'QQ': 'com.tencent.mobileqq',
-            '微博': 'com.sina.weibo',
-            '网易云音乐': 'com.netease.cloudmusic',
-            'QQ音乐': 'com.tencent.qqmusic',
-            '酷狗音乐': 'com.kugou.android',
-            '高德地图': 'com.autonavi.minimap',
-            '百度地图': 'com.baidu.BaiduMap',
-            '大众点评': 'com.dianping.v1',
-            '饿了么': 'me.ele',
-            '滴滴出行': 'com.sdu.didi.psnger',
-            '哔哩哔哩': 'tv.danmaku.bili',
-            'B站': 'tv.danmaku.bili',
-            '小红书': 'com.xingin.xhs',
-            '今日头条': 'com.ss.android.article.news',
-            '钉钉': 'com.alibaba.android.rimet',
-            '飞书': 'com.ss.android.lark',
-            '腾讯会议': 'com.tencent.wemeet.app',
-            '百度': 'com.baidu.searchbox',
-            '知乎': 'com.zhihu.android',
-            '拼多多': 'com.xunmeng.pinduoduo',
-            '闲鱼': 'com.taobao.idlefish',
-            '携程': 'ctrip.android.view',
-            '去哪儿': 'com.Qunar',
-            '优酷': 'com.youku.phone',
-            '爱奇艺': 'com.qiyi.video',
-            '腾讯视频': 'com.tencent.qqlive',
-            '芒果TV': 'com.hunantv.imgo.activity',
-            'UC浏览器': 'com.UCMobile',
-            'Chrome': 'com.android.chrome',
-            '快手': 'com.smile.gifmaker',
-        }
-        
-        # 合并，预设中的优先
-        for name, package in common_apps.items():
-            if name not in mapping:
-                mapping[name] = package
+            if isinstance(info, dict):
+                # 添加主名称
+                app_name = info.get('app_name', '')
+                if app_name:
+                    mapping[app_name] = package
+                
+                # 添加别名
+                aliases = info.get('aliases', [])
+                for alias in aliases:
+                    if alias not in mapping:
+                        mapping[alias] = package
         
         return mapping
     
