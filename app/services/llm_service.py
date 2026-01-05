@@ -179,20 +179,28 @@ class LLMService:
         # 获取当前APP包名
         current_package = current_app.get('package', '') if current_app else ''
         
-        # 根据当前APP获取预设列表（首次或APP切换时）
+        # 根据当前APP获取预设列表（每一步都发送，确保AI不会忘记）
         preset_info = ""
         preset_service = self._get_preset_service()
         
-        # 判断是否需要发送预设（首次调用或APP切换）
-        should_send_presets = (
-            previous_action is None or  # 第一步
-            previous_app_package != current_package  # APP切换了
-        )
-        
-        if should_send_presets and current_package:
+        # 从当前APP获取预设
+        if current_package:
             preset_info = preset_service.format_app_presets_for_ai(current_package, task)
-            if preset_info:
-                user_message += f"\n{preset_info}\n"
+        
+        # 第一步时，如果任务中提到了其他APP，也加载目标APP的预设
+        if previous_action is None:
+            target_package = preset_service.detect_target_app(task)
+            if target_package and target_package != current_package:
+                target_preset_info = preset_service.format_app_presets_for_ai(target_package, task)
+                if target_preset_info:
+                    # 如果当前APP也有预设，两个都发送
+                    if preset_info:
+                        preset_info += f"\n\n{target_preset_info}"
+                    else:
+                        preset_info = target_preset_info
+        
+        if preset_info:
+            user_message += f"\n{preset_info}\n"
         
         if current_app:
             package = current_app.get('package', '未知')
@@ -274,13 +282,12 @@ class LLMService:
         
         return result
     
-    def _summarize_ocr(self, ocr_result: Dict[str, Any], max_elements: int = 50) -> str:
+    def _summarize_ocr(self, ocr_result: Dict[str, Any]) -> str:
         """
-        格式化OCR识别结果，供AI分析使用
+        格式化OCR识别结果，供AI分析使用（返回全部高置信度结果）
         
         Args:
             ocr_result: OCR识别结果字典
-            max_elements: 最大元素数量
             
         Returns:
             格式化的OCR文字信息
@@ -295,18 +302,13 @@ class LLMService:
         # 按从上到下、从左到右排序
         elements = sorted(elements, key=lambda x: (x['bounds']['top'], x['bounds']['left']))
         
-        # 限制数量
-        if len(elements) > max_elements:
-            elements = elements[:max_elements]
-        
         lines = []
         for i, elem in enumerate(elements, 1):
-            # 格式: 序号. "文字" -> 点击坐标(x, y)
             text = elem['text']
             center = elem['center']
             confidence = elem.get('confidence', 0)
             
-            # 只显示置信度较高的结果
+            # 只显示置信度 >= 0.5 的结果
             if confidence >= 0.5:
                 lines.append(f'{i}. "{text}" -> 点击坐标({center[0]}, {center[1]})')
         
@@ -315,9 +317,9 @@ class LLMService:
         
         return '\n'.join(lines)
     
-    def _summarize_ui(self, ui_hierarchy: str, max_length: int = 3000) -> str:
+    def _summarize_ui(self, ui_hierarchy: str) -> str:
         """
-        提取UI层级中的关键信息
+        提取UI层级中的全部关键信息（返回全部元素）
         """
         import xml.etree.ElementTree as ET
         
@@ -334,8 +336,8 @@ class LLMService:
                 bounds = attribs.get('bounds', '')
                 class_name = attribs.get('class', '').split('.')[-1]
                 
-                # 只提取有意义的元素
-                if text or desc or (clickable and resource_id):
+                # 提取有意义的元素（有文字、描述、或可点击）
+                if text or desc or clickable or resource_id:
                     info_parts = []
                     if text:
                         info_parts.append(f'text="{text}"')
@@ -349,21 +351,18 @@ class LLMService:
                     if bounds:
                         info_parts.append(f'bounds={bounds}')
                     
-                    elements.append(f"[{class_name}] {' '.join(info_parts)}")
+                    if info_parts:  # 确保有内容才添加
+                        elements.append(f"[{class_name}] {' '.join(info_parts)}")
                 
                 for child in node:
                     extract_elements(child, depth + 1)
             
             extract_elements(root)
             
-            result = '\n'.join(elements[:80])  # 增加元素数量限制
-            if len(result) > max_length:
-                result = result[:max_length] + '...'
-            
-            return result
+            return '\n'.join(elements)
             
         except Exception as e:
-            return ui_hierarchy[:max_length] + '...' if len(ui_hierarchy) > max_length else ui_hierarchy
+            return ui_hierarchy
     
     def _parse_response(self, response: str) -> Dict[str, Any]:
         """

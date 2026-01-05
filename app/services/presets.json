@@ -683,5 +683,31 @@
   "com.simplemobiletools.smsmessenger": {
     "app_name": "Simple SMS Messenger",
     "aliases": ["SimpleSMSMessenger"]
+  },
+  "com.mxbc.mxpos": {
+    "app_name": "蜜雪收银",
+    "aliases": ["蜜雪", "MXPOS", "mxpos", "蜜雪冰城POS"],
+    "presets": {
+      "登录": {
+        "keywords": ["登录", "登陆", "进入", "打开"],
+        "steps": [
+          "点击密码旁的输入框",
+          "输入密码：123456",
+          "点击「登录」按钮"
+        ]
+      },
+      "下单": {
+        "keywords": ["收银", "点单", "下单", "开单"],
+        "steps": [
+          "登录",
+          "点击【收银】",
+          "在商品分类中找对应商品",
+          "点击商品",
+          "注意根据需求选择温度糖度等选项",
+          "购物车中点击商品然后点击【编辑】即可编辑小料等信息",
+          "点击【结账】选择支付方式（通常选现金）然后点击收款"
+        ]
+      }
+    }
   }
 }
