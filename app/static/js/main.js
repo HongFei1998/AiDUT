@@ -105,6 +105,13 @@ class AIPhoneAssistant {
         this.connectModal.querySelector('.modal-overlay').addEventListener('click', () => {
             this.hideConnectModal();
         });
+        
+        // 窗口大小变化时重新同步 canvas 尺寸
+        window.addEventListener('resize', () => {
+            if (this.isConnected && !this.deviceScreen.classList.contains('hidden')) {
+                this.syncCanvasSize();
+            }
+        });
     }
 
     showLoading(text = '正在处理...') {
@@ -459,6 +466,58 @@ class AIPhoneAssistant {
         this.screenPlaceholder.classList.add('hidden');
         this.deviceScreen.classList.remove('hidden');
         this.touchCanvas.classList.remove('hidden');
+        
+        // 监听图片加载，检测横竖屏
+        this.deviceScreen.onload = () => this.updateScreenOrientation();
+    }
+    
+    /**
+     * 根据截图尺寸自动更新横竖屏模式
+     */
+    updateScreenOrientation() {
+        const img = this.deviceScreen;
+        const phoneFrame = document.querySelector('.phone-frame');
+        const devicePanel = document.querySelector('.device-panel');
+        const orientationBadge = document.getElementById('orientationBadge');
+        
+        if (!img.naturalWidth || !img.naturalHeight) return;
+        
+        const isLandscape = img.naturalWidth > img.naturalHeight;
+        
+        // 更新手机框架样式
+        if (isLandscape) {
+            phoneFrame.classList.add('landscape');
+            devicePanel.classList.add('landscape-device');
+            if (orientationBadge) {
+                orientationBadge.textContent = `横屏 ${img.naturalWidth}×${img.naturalHeight}`;
+            }
+        } else {
+            phoneFrame.classList.remove('landscape');
+            devicePanel.classList.remove('landscape-device');
+            if (orientationBadge) {
+                orientationBadge.textContent = `竖屏 ${img.naturalWidth}×${img.naturalHeight}`;
+            }
+        }
+        
+        // 同步 canvas 尺寸
+        this.syncCanvasSize();
+    }
+    
+    /**
+     * 同步触摸画布尺寸与截图尺寸
+     */
+    syncCanvasSize() {
+        const img = this.deviceScreen;
+        const canvas = this.touchCanvas;
+        
+        // 等待图片渲染完成后获取实际显示尺寸
+        requestAnimationFrame(() => {
+            const rect = img.getBoundingClientRect();
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        });
     }
 
     async refreshScreen() {
@@ -472,6 +531,7 @@ class AIPhoneAssistant {
             const data = await response.json();
             if (data.success) {
                 this.deviceScreen.src = data.data;
+                // 图片加载后会自动触发 onload -> updateScreenOrientation
             }
         } catch (error) {
             console.error('刷新截图失败:', error);
@@ -490,14 +550,24 @@ class AIPhoneAssistant {
     async handleScreenClick(e) {
         if (!this.isConnected || this.isExecuting) return;
         
-        const rect = this.touchCanvas.getBoundingClientRect();
-        const scaleX = this.deviceScreen.naturalWidth / rect.width;
-        const scaleY = this.deviceScreen.naturalHeight / rect.height;
+        // 使用图片的实际显示区域来计算坐标
+        const imgRect = this.deviceScreen.getBoundingClientRect();
+        const scaleX = this.deviceScreen.naturalWidth / imgRect.width;
+        const scaleY = this.deviceScreen.naturalHeight / imgRect.height;
         
-        const x = Math.round((e.clientX - rect.left) * scaleX);
-        const y = Math.round((e.clientY - rect.top) * scaleY);
+        // 计算相对于图片的点击位置
+        const relX = e.clientX - imgRect.left;
+        const relY = e.clientY - imgRect.top;
         
-        this.showClickEffect(e.clientX - rect.left, e.clientY - rect.top);
+        // 确保点击在图片范围内
+        if (relX < 0 || relY < 0 || relX > imgRect.width || relY > imgRect.height) {
+            return;
+        }
+        
+        const x = Math.round(relX * scaleX);
+        const y = Math.round(relY * scaleY);
+        
+        this.showClickEffect(relX, relY);
         
         try {
             await fetch('/api/device/click', {
@@ -512,11 +582,19 @@ class AIPhoneAssistant {
     }
 
     showClickEffect(x, y) {
+        // 获取图片在 screenWrapper 中的位置偏移
+        const wrapperRect = this.screenWrapper.getBoundingClientRect();
+        const imgRect = this.deviceScreen.getBoundingClientRect();
+        
+        // 计算图片相对于 wrapper 的偏移
+        const offsetX = imgRect.left - wrapperRect.left;
+        const offsetY = imgRect.top - wrapperRect.top;
+        
         const effect = document.createElement('div');
         effect.style.cssText = `
             position: absolute;
-            left: ${x}px;
-            top: ${y}px;
+            left: ${offsetX + x}px;
+            top: ${offsetY + y}px;
             width: 30px;
             height: 30px;
             margin: -15px;
@@ -568,6 +646,14 @@ class AIPhoneAssistant {
     }
 
     _showClickMarker(x, y) {
+        // 获取图片在 screenWrapper 中的位置偏移
+        const wrapperRect = this.screenWrapper.getBoundingClientRect();
+        const imgRect = this.deviceScreen.getBoundingClientRect();
+        
+        // 计算图片相对于 wrapper 的偏移
+        const offsetX = imgRect.left - wrapperRect.left;
+        const offsetY = imgRect.top - wrapperRect.top;
+        
         const marker = document.createElement('div');
         marker.className = 'action-marker click-marker';
         marker.innerHTML = `
@@ -575,8 +661,8 @@ class AIPhoneAssistant {
             <div class="marker-dot"></div>
             <div class="marker-label">点击</div>
         `;
-        marker.style.left = `${x}px`;
-        marker.style.top = `${y}px`;
+        marker.style.left = `${offsetX + x}px`;
+        marker.style.top = `${offsetY + y}px`;
         this.screenWrapper.appendChild(marker);
     }
 
@@ -739,6 +825,7 @@ class AIPhoneAssistant {
             this.deviceScreen.src = data.screenshot;
             // 截图更新时清除之前的操作标记
             this.clearActionMarkers();
+            // 图片加载后会自动触发 onload -> updateScreenOrientation
         }
         
         switch (data.type) {

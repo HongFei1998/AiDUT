@@ -170,10 +170,18 @@ body {
 /* ===== 设备面板 ===== */
 .device-panel {
     width: 380px;
+    min-width: 300px;
+    max-width: 60vw;
     background: var(--bg-card);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    transition: width 0.3s ease;
+}
+
+/* 横屏设备时扩展面板宽度 */
+.device-panel.landscape-device {
+    width: 55vw;
 }
 
 .panel-header {
@@ -212,6 +220,14 @@ body {
     display: flex;
     flex-direction: column;
     max-height: 100%;
+    max-width: 100%;
+    transition: all 0.3s ease;
+}
+
+/* 横屏模式 */
+.phone-frame.landscape {
+    flex-direction: row;
+    border-radius: 24px;
 }
 
 .phone-notch {
@@ -220,6 +236,14 @@ body {
     background: #2a2a3e;
     border-radius: 3px;
     margin: 0 auto 8px;
+    transition: all 0.3s ease;
+}
+
+/* 横屏模式下的刘海 */
+.phone-frame.landscape .phone-notch {
+    width: 6px;
+    height: 60px;
+    margin: auto 8px auto 0;
 }
 
 .screen-wrapper {
@@ -230,8 +254,17 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 400px;
+    min-height: 200px;
     max-height: calc(100vh - 280px);
+    transition: all 0.3s ease;
+}
+
+/* 横屏模式下的屏幕容器 */
+.phone-frame.landscape .screen-wrapper {
+    min-height: auto;
+    min-width: 200px;
+    max-height: calc(100vh - 280px);
+    max-width: calc(100vw - 500px);
 }
 
 .device-screen {
@@ -247,15 +280,35 @@ body {
 
 .touch-canvas {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     cursor: pointer;
+    /* 尺寸由 JS 动态设置以匹配图片实际显示尺寸 */
 }
 
 .touch-canvas.hidden {
     display: none;
+}
+
+/* 屏幕方向指示器 */
+.orientation-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 10px;
+    border-radius: 4px;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.screen-wrapper:hover .orientation-badge {
+    opacity: 1;
 }
 
 /* 占位符 */
@@ -290,6 +343,14 @@ body {
     justify-content: center;
     gap: 28px;
     padding: 12px 0 4px;
+    transition: all 0.3s ease;
+}
+
+/* 横屏模式下的导航键 */
+.phone-frame.landscape .phone-nav {
+    flex-direction: column;
+    padding: 0 4px 0 12px;
+    gap: 16px;
 }
 
 .nav-btn {
@@ -310,6 +371,13 @@ body {
 .nav-btn:hover {
     background: #3a3a4e;
     color: #fff;
+}
+
+/* 横屏模式下的导航键尺寸 */
+.phone-frame.landscape .nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
 }
 
 /* ===== 聊天面板 ===== */
@@ -1236,17 +1304,67 @@ body {
 }
 
 /* ===== 响应式 ===== */
+@media (max-width: 1200px) {
+    .device-panel.landscape-device {
+        width: 50vw;
+    }
+    
+    .phone-frame.landscape .screen-wrapper {
+        max-width: calc(100vw - 450px);
+    }
+}
+
 @media (max-width: 900px) {
     .main-content {
         flex-direction: column;
     }
     
     .device-panel {
-        width: 100%;
-        height: 50vh;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto;
+        min-height: 40vh;
+        max-height: 60vh;
+    }
+    
+    .device-panel.landscape-device {
+        width: 100% !important;
+        min-height: 35vh;
+    }
+    
+    .screen-container {
+        padding: 10px;
     }
     
     .screen-wrapper {
-        min-height: 200px;
+        min-height: 150px;
+        max-height: calc(60vh - 150px);
+    }
+    
+    .phone-frame.landscape .screen-wrapper {
+        max-width: calc(100vw - 60px);
+    }
+    
+    /* 移动端横屏设备调整 */
+    .phone-frame.landscape {
+        border-radius: 16px;
+        padding: 8px;
+    }
+    
+    .phone-frame.landscape .phone-notch {
+        width: 4px;
+        height: 40px;
+        margin: auto 6px auto 0;
+    }
+    
+    .phone-frame.landscape .phone-nav {
+        gap: 10px;
+        padding: 0 2px 0 8px;
+    }
+    
+    .phone-frame.landscape .nav-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 10px;
     }
 }
