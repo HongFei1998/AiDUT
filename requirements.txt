@@ -5,7 +5,7 @@ flask-cors>=4.0.0
 # uiautomator2 - Android设备控制
 uiautomator2>=3.5.0
 
-# OpenAI API客户端
+# OpenAI 
 openai>=1.0.0
 
 # 环境变量管理
